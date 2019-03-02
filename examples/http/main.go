@@ -22,10 +22,18 @@ func main() {
 
 	limiter := limit.New(client)
 
-	http.Handle("/", limiter.LimitFuncHandler(3, time.Second*10, handler))
+	// With a rate of 1 every 10 seconds.
+	http.Handle("/one", limiter.LimitFuncHandler(1, time.Second*10, one))
+
+	// With a rate of 5 every second.
+	http.Handle("/two", limiter.LimitFuncHandler(5, time.Second, two))
 	http.ListenAndServe(":1234", nil)
 }
 
-func handler(w http.ResponseWriter, req *http.Request) {
-	w.Write([]byte("hello"))
+func one(w http.ResponseWriter, req *http.Request) {
+	w.Write([]byte("one"))
+}
+
+func two(w http.ResponseWriter, req *http.Request) {
+	w.Write([]byte("two"))
 }
