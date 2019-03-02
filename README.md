@@ -15,7 +15,7 @@ As an example, we'll assume a unique ID of "8.8.8.8" and a rate that allows for 
 
 * Start a transaction.
 * Remove all items from the set that were performed over 1 second ago.
-* Return all of the items in the sorted set.
+* Return all of the items in the sorted set (this allows us to determine if the limit has been reached).
 * Add the current timestamp to the sorted set.
 * Add an expiry of 1 second to the sorted set.
 * Commit the transaction.
