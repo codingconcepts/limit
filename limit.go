@@ -30,7 +30,9 @@ func New(c *redis.Client) *limiter {
 	}
 }
 
-// Rate returns a specific rate-limited
+// Rate returns a specific rate-limited period and provides the method
+// that will determine whether an action is permitted or not, based on
+// the rate limit in place.
 func (l *limiter) Rate(maxCalls int, d time.Duration) *rate {
 	return &rate{
 		client:        l.client,
