@@ -3,6 +3,7 @@ package limit
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"strconv"
 	"time"
@@ -58,7 +59,14 @@ func (l *limiter) LimitHandler(maxCalls int, d time.Duration, next http.Handler)
 func (r *rate) limitByRequest(w http.ResponseWriter, req *http.Request) error {
 	r.setResponseHeaders(w, req)
 
-	id := fmt.Sprintf("%s:%s", req.RemoteAddr, req.URL.Path)
+	// Try to extract just the host name from the remote address, falling back
+	// to the entire remote address if an error occurs.
+	host, _, err := net.SplitHostPort(req.RemoteAddr)
+	if err != nil {
+		host = req.RemoteAddr
+	}
+
+	id := fmt.Sprintf("%s:%s", host, req.URL.Path)
 	ok, err := r.Allowed(id)
 	if err != nil {
 		return err
