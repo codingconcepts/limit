@@ -49,10 +49,10 @@ func main() {
 	// Create a limiter allowing 3 calls every second.
 	rate := limit.New(client).Rate(3, time.Second)
 	
-	fmt.Println(rate.Allowed("8.8.8.8")) // true <nil>
-	fmt.Println(rate.Allowed("8.8.8.8")) // true <nil>
-	fmt.Println(rate.Allowed("8.8.8.8")) // true <nil>
-	fmt.Println(rate.Allowed("8.8.8.8")) // false <nil>
+	fmt.Println(rate.Allowed("8.8.8.8")) // true 3 <nil>
+	fmt.Println(rate.Allowed("8.8.8.8")) // true 2 <nil>
+	fmt.Println(rate.Allowed("8.8.8.8")) // true 1 <nil>
+	fmt.Println(rate.Allowed("8.8.8.8")) // false 0 <nil>
 }
 ```
 

@@ -110,8 +110,8 @@ func getIPAdress(r *http.Request) string {
 			ip := strings.TrimSpace(addresses[i])
 
 			// Headers can contain spaces, strip those out.
-			realIP := net.ParseIP(ip)
-			if !realIP.IsGlobalUnicast() {
+			parsed := net.ParseIP(ip)
+			if !parsed.IsGlobalUnicast() {
 				continue
 			}
 			return ip
