@@ -16,12 +16,14 @@ func TestLimitFuncHandler(t *testing.T) {
 	req, resp := httptest.NewRequest(http.MethodGet, "/", nil), httptest.NewRecorder()
 	handler.ServeHTTP(resp, req)
 	test.Equals(t, http.StatusOK, resp.Code)
+	assertResponseHeaders(t, resp.Header(), req, "2", "2", "1s")
 
 	// Request at 1000000ms.
 	mockClock.Add(time.Millisecond)
 	req, resp = httptest.NewRequest(http.MethodGet, "/", nil), httptest.NewRecorder()
 	handler.ServeHTTP(resp, req)
 	test.Equals(t, http.StatusOK, resp.Code)
+	assertResponseHeaders(t, resp.Header(), req, "2", "1", "1s")
 
 	// Request at 2000000ms is disallowed because this is the third
 	// request within 2 seconds.
@@ -36,4 +38,13 @@ func TestLimitFuncHandler(t *testing.T) {
 	req, resp = httptest.NewRequest(http.MethodGet, "/", nil), httptest.NewRecorder()
 	handler.ServeHTTP(resp, req)
 	test.Equals(t, http.StatusOK, resp.Code)
+	assertResponseHeaders(t, resp.Header(), req, "2", "2", "1s")
+}
+
+func assertResponseHeaders(t *testing.T, h http.Header, r *http.Request, tot, left, dur string) {
+	test.Equals(t, tot, h.Get(headerRateLimitTotal))
+	test.Equals(t, left, h.Get(headerRateLimitRemaining))
+	test.Equals(t, dur, h.Get(headerRateLimitDuration))
+	test.Equals(t, "", h.Get(headerRateLimitForwardedFor))
+	test.Equals(t, r.RemoteAddr, h.Get(headerRateLimitRemoteAddr))
 }

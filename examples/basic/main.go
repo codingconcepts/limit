@@ -24,11 +24,11 @@ func main() {
 	rate := limit.New(client).Rate(3, time.Second)
 
 	for {
-		allowed, err := rate.Allowed("8.8.8.8")
+		allowed, left, err := rate.Allowed("8.8.8.8")
 		if err != nil {
 			log.Println("error determining rate-limit")
 		}
-		log.Println(allowed)
+		log.Printf("left: %d allowed: %v\n", left, allowed)
 		fmt.Scanln()
 	}
 }

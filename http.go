@@ -6,7 +6,16 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
+)
+
+const (
+	headerRateLimitTotal        = "X-Rate-Limit-Total"
+	headerRateLimitRemaining    = "X-Rate-Limit-Remaining"
+	headerRateLimitDuration     = "X-Rate-Limit-Duration"
+	headerRateLimitForwardedFor = "X-Rate-Limit-Forwarded-For"
+	headerRateLimitRemoteAddr   = "X-Rate-Limit-Remote-Addr"
 )
 
 // Error allows rate-specific information to be returned to the caller
@@ -57,8 +66,6 @@ func (l *limiter) LimitHandler(maxCalls int, d time.Duration, next http.Handler)
 }
 
 func (r *rate) limitByRequest(w http.ResponseWriter, req *http.Request) error {
-	r.setResponseHeaders(w, req)
-
 	// Try to extract just the host name from the remote address, falling back
 	// to the entire remote address if an error occurs.
 	host, _, err := net.SplitHostPort(req.RemoteAddr)
@@ -67,7 +74,7 @@ func (r *rate) limitByRequest(w http.ResponseWriter, req *http.Request) error {
 	}
 
 	id := fmt.Sprintf("%s:%s", host, req.URL.Path)
-	ok, err := r.Allowed(id)
+	ok, left, err := r.Allowed(id)
 	if err != nil {
 		return err
 	}
@@ -79,12 +86,36 @@ func (r *rate) limitByRequest(w http.ResponseWriter, req *http.Request) error {
 		}
 	}
 
+	// Set the response header so the user knows how many requests they've got left.
+	r.responseHeaders(w, req, left)
+
 	return nil
 }
 
-func (r *rate) setResponseHeaders(w http.ResponseWriter, req *http.Request) {
-	w.Header().Add("X-Rate-Limit-Limit", strconv.Itoa(r.maxCalls))
-	w.Header().Add("X-Rate-Limit-Duration", strconv.FormatFloat(r.windowSeconds, 'f', 0, 64))
-	w.Header().Add("X-Rate-Limit-Request-Forwarded-For", req.Header.Get("X-Forwarded-For"))
-	w.Header().Add("X-Rate-Limit-Request-Remote-Addr", req.RemoteAddr)
+func (r *rate) responseHeaders(w http.ResponseWriter, req *http.Request, left int) {
+	w.Header().Add(headerRateLimitTotal, strconv.Itoa(r.maxCalls))
+	w.Header().Add(headerRateLimitRemaining, strconv.Itoa(left))
+	w.Header().Add(headerRateLimitDuration, fmt.Sprintf("%.0fs", r.windowSeconds))
+	w.Header().Add(headerRateLimitForwardedFor, getIPAdress(req))
+	w.Header().Add(headerRateLimitRemoteAddr, req.RemoteAddr)
+}
+
+func getIPAdress(r *http.Request) string {
+	for _, h := range []string{"X-Forwarded-For", "X-Real-Ip"} {
+		addresses := strings.Split(r.Header.Get(h), ",")
+
+		// March from right to left until we get a public address that will
+		// be the address right before our proxy.
+		for i := len(addresses) - 1; i >= 0; i-- {
+			ip := strings.TrimSpace(addresses[i])
+
+			// Headers can contain spaces, strip those out.
+			realIP := net.ParseIP(ip)
+			if !realIP.IsGlobalUnicast() {
+				continue
+			}
+			return ip
+		}
+	}
+	return ""
 }
