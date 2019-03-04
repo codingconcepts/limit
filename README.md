@@ -95,4 +95,3 @@ func handler(w http.ResponseWriter, req *http.Request) {
 ## Todos
 
 * Need a fallback mechanism, in case Redis can't be reached.
-* Needs tests.

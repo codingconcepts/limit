@@ -5,15 +5,18 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/benbjohnson/clock"
 	"github.com/go-redis/redis"
 )
 
 type limiter struct {
-	client *redis.Client
+	client redis.Cmdable
+	clock  clock.Clock
 }
 
 type rate struct {
-	client        *redis.Client
+	client        redis.Cmdable
+	clock         clock.Clock
 	windowSeconds float64
 	windowNanos   int64
 	maxCalls      int
@@ -24,9 +27,10 @@ type rate struct {
 // a specific sliding window period or a call to one of the HTTP
 // handler implementations which themselves create and use an instance
 // of the sliding window period.
-func New(c *redis.Client) *limiter {
+func New(c redis.Cmdable) *limiter {
 	return &limiter{
 		client: c,
+		clock:  clock.New(),
 	}
 }
 
@@ -36,6 +40,7 @@ func New(c *redis.Client) *limiter {
 func (l *limiter) Rate(maxCalls int, d time.Duration) *rate {
 	return &rate{
 		client:        l.client,
+		clock:         l.clock,
 		windowSeconds: d.Seconds(),
 		windowNanos:   d.Nanoseconds(),
 		maxCalls:      maxCalls,
@@ -46,7 +51,7 @@ func (l *limiter) Rate(maxCalls int, d time.Duration) *rate {
 // calls to Allow against the configured sliding window and maximum
 // allowed calls.
 func (r *rate) Allowed(id string) (bool, error) {
-	now := time.Now().UnixNano()
+	now := r.clock.Now().UnixNano()
 
 	tx := r.client.TxPipeline()
 	tx.ZRemRangeByScore(id, "0", strconv.FormatInt(now-r.windowNanos, 10))

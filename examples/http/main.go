@@ -23,7 +23,7 @@ func main() {
 	limiter := limit.New(client)
 
 	// With a rate of 1 every 10 seconds.
-	http.Handle("/one", limiter.LimitFuncHandler(1, time.Second*10, one))
+	http.Handle("/one", limiter.LimitFuncHandler(2, time.Second*10, one))
 
 	// With a rate of 5 every second.
 	http.Handle("/two", limiter.LimitFuncHandler(5, time.Second, two))
